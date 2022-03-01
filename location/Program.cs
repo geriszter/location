@@ -26,8 +26,8 @@ public class location
 
             TcpClient client = new TcpClient();
             client.Connect(address, port);
-            client.ReceiveTimeout = 1000;
-            client.SendTimeout = 1000;
+            //client.ReceiveTimeout = 1000;
+            //client.SendTimeout = 1000;
             StreamWriter sw = new StreamWriter(client.GetStream());
             StreamReader sr = new StreamReader(client.GetStream());
 
@@ -88,13 +88,12 @@ public class location
                             {
                                 location += " " + args[i];
                             }
-                            location = location.Trim(new Char[] { '\"', '\'', '`', '\\', '.' });
                             request = (args[0] + " " + location+"\r\n");
                         }
                         break;
                 }
 
-                request = request.Trim(new Char[] { '\"', '\'', '`', '\\', '.' });
+                //request = request.Trim(new Char[] { '\"', '\'', '`', '\\', '.' });
 
                 sw.Write(request);
                 sw.Flush();
@@ -141,7 +140,7 @@ public class location
             {
                 Console.WriteLine($"{args[0]} location changed to be {args[1]}");
             }
-            else if (rawData.Contains("HTTP/0.9 200 OK\r\nContent-Type: text/plain") && rawData.Length >= 45)
+            else if (rawData.Contains("HTTP/0.9 200 OK\r\nContent-Type: text/plain") && args.Length ==1)
             {
                 string[] line = rawData.Trim().Split();
                 string location = line[9];
@@ -178,14 +177,17 @@ public class location
             {
                 Console.WriteLine($"{args[0]} location changed to be {args[1]}");
             }
-            else if (rawData.Contains("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n"))
+            else if (rawData.Contains("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n") && args.Length==1)
             {
                 string[] data = rawData.Split("\r\n");
-                Console.WriteLine($"{args[0]} is {data[data.Length-2]}");
+                Console.WriteLine($"{args[0]} is {data[data.Length-3]}");
             }
             else if (rawData.Contains("OK\r\n"))
             {
-                Console.WriteLine($"{args[0]} location changed to be {args[1]}");
+                string loc = request.Remove(0, args[0].Length+1);
+                loc.Remove(loc.Length-2);
+                loc = loc.Trim(new Char[] { '\"', '\'', '`', '\\', '.' });
+                Console.WriteLine($"{args[0]} location changed to be {loc}");
             }
             else
             {

@@ -2,7 +2,7 @@
   "profiles": {
     "location": {
       "commandName": "Project",
-      "commandLineArgs": "-h1 Jose-hernandez"
+      "commandLineArgs": "-h localhost PUT ``/606497``"
     }
   }
 }
