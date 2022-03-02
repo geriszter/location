@@ -13,13 +13,14 @@ public class location
     }
     static void Main(string[] args)
     {
+        Style selectedStyle;
+        string request = null;
+        string address;
+        int port;
+        string location = null;
+
         try
         {
-            string request = null;
-            string address;
-            int port;
-            Style selectedStyle;
-
             args = GetStyle(args, out selectedStyle);
             args = GetAddress(args, out address);
             args = GetPort(args, out port); // if user enter string throw error
@@ -31,12 +32,22 @@ public class location
             StreamWriter sw = new StreamWriter(client.GetStream());
             StreamReader sr = new StreamReader(client.GetStream());
 
+
             if (args.Length == 0)
             {
                 Console.WriteLine("ERROR: no arguments supplied");
             }
             else
             {
+                if (args.Length > 1)
+                {
+                    location = args[1];
+                    for (int i = 2; i < args.Length; i++)
+                    {
+                        location += " " + args[i];
+                    }
+                }
+
                 //-h1 means HTTP/1.1, -h0 means HTTP/1.0 and -h9 means HTTP/0.9 styles
                 switch (selectedStyle)
                 {
@@ -47,8 +58,8 @@ public class location
                         }
                         else if (args.Length > 1)
                         {
-                            int locationLength = args[1].Length;
-                            request = ($"POST /{args[0]} HTTP/1.0\r\nContent-Length: {locationLength}\r\n\r\n{args[1]}");
+                            int locationLength = location.Length;
+                            request = ($"POST /{args[0]} HTTP/1.0\r\nContent-Length: {locationLength}\r\n\r\n{location}");
                         }
                         break;
 
@@ -60,7 +71,7 @@ public class location
                         }
                         else if (args.Length > 1)
                         {
-                            string locationAndName = $"name={args[0]}&location={args[1]}";
+                            string locationAndName = $"name={args[0]}&location={location}";
                             request = ($"POST / HTTP/1.1\r\nHost: {address}\r\nContent-Length: {locationAndName.Length}\r\n\r\n{locationAndName}");
                         }
                         break;
@@ -72,7 +83,7 @@ public class location
                         }
                         else if (args.Length > 1)
                         {
-                            request = ($"PUT /{args[0]}\r\n\r\n{args[1]}\r\n");
+                            request = ($"PUT /{args[0]}\r\n\r\n{location}\r\n");
                         }
                         break;
 
@@ -83,22 +94,19 @@ public class location
                         }
                         else if (args.Length > 1)
                         {
-                            string location = args[1];
-                            for (int i = 2; i < args.Length; i++)
-                            {
-                                location += " " + args[i];
-                            }
                             request = (args[0] + " " + location+"\r\n");
                         }
                         break;
                 }
 
-                //request = request.Trim(new Char[] { '\"', '\'', '`', '\\', '.' });
-
                 sw.Write(request);
                 sw.Flush();
             }
 
+            if (args.Length>1)
+            {
+                location = location.Trim(new Char[] { '\"', '\'', '`', '\\', '.' });
+            }
 
             bool html = false;
             string rawData = "";
@@ -120,76 +128,79 @@ public class location
                     html = true;
                 }
             }
-            //try
-            //{
-            //    if(rawData == "")
-            //    {
-            //        rawData += sr.ReadToEnd();
-            //    }
-            //}
-            //catch
-            //{
-            //}
 
 
-            if ((rawData.Contains("404") && rawData.Contains("Not Found\r\n")) || rawData.Contains("ERROR:"))
+            if (rawData== "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n\r\n")
             {
-                Console.WriteLine("ERROR: no entries found");
+                Console.WriteLine(rawData);
             }
-            else if (rawData.Contains("HTTP/0.9 200 OK\r\nContent-Type: text/plain\r\n\r\n") && args.Length > 1)
+            else if (rawData=="HTTP/1.0 404 Not Found\r\nContent-Type: text/plain\r\n\r\n\r\n")
+            {
+                Console.WriteLine(rawData);
+            }
+            else if (rawData == "ERROR: no entries found\r\n")
+            {
+                Console.WriteLine(rawData);
+            }
+            else if (rawData == "HTTP/0.9 404 Not Found\r\nContent-Type: text/plain\r\n\r\n\r\n")
+            {
+                Console.WriteLine(rawData);
+            }
+            else if (rawData.Contains("HTTP/0.9 200 OK\r\nContent-Type: text/plain\r\n\r\n") && args.Length > 1 && selectedStyle == Style.h9)
             {
                 Console.WriteLine($"{args[0]} location changed to be {args[1]}");
             }
-            else if (rawData.Contains("HTTP/0.9 200 OK\r\nContent-Type: text/plain") && args.Length ==1)
+            else if (rawData.Contains("HTTP/0.9 200 OK\r\nContent-Type: text/plain") && args.Length == 1 && selectedStyle == Style.h9)
             {
                 string[] line = rawData.Trim().Split();
-                string location = line[9];
+                location = line[9];
                 for (int i = 10; i < line.Length; i++)
                 {
                     location += " " + line[i];
                 }
                 Console.WriteLine($"{args[0]} is {location}");
             }
-            else if (rawData.Contains("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n"))
+            else if (rawData.Contains("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n") && selectedStyle == Style.h1)
             {
-                if (args.Length == 2)
+                if (request.Contains("name=") && request.Contains("&location="))
                 {
-                    Console.WriteLine($"{args[0]} location changed to be {args[1]}");
+                    Console.WriteLine($"{args[0]} location changed to be {location}");
                 }
                 else //GET
                 {
-                    if (!html)
+                    if (!html) 
                     {
                         string[] line = rawData.Trim().Split();
                         int indexOfSpace = Array.IndexOf(line, "");
 
-                        string location = line[9];
+                        location = line[9];
                         for (int i = 10; i < line.Length; i++)
                         {
                             location += " " + line[i];
                         }
-                        rawData = location;
+                        rawData = location; 
                     }
                     Console.WriteLine($"{args[0]} is {rawData}");
                 }
             }
-            else if (rawData.Contains("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n") && args.Length > 1)
+            else if (rawData.Contains("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n") && args.Length > 1 && selectedStyle == Style.h0)
             {
-                Console.WriteLine($"{args[0]} location changed to be {args[1]}");
+                Console.WriteLine($"{args[0]} location changed to be {location}");
             }
-            else if (rawData.Contains("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n") && args.Length==1)
+            else if (rawData.Contains("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n") && args.Length == 1 && selectedStyle == Style.h0)
             {
                 string[] data = rawData.Split("\r\n");
-                Console.WriteLine($"{args[0]} is {data[data.Length-3]}");
+                Console.WriteLine($"{args[0]} is {data[data.Length - 3]}");
             }
-            else if (rawData.Contains("OK\r\n"))
+            else if (rawData == "OK\r\n" && args.Length > 1 && selectedStyle == Style.def)
             {
-                string loc = request.Remove(0, args[0].Length+1);
-                loc.Remove(loc.Length-2);
-                loc = loc.Trim(new Char[] { '\"', '\'', '`', '\\', '.' });
-                Console.WriteLine($"{args[0]} location changed to be {loc}");
+                Console.WriteLine($"{args[0]} location changed to be {location}");
             }
-            else
+            //else if (selectedStyle == Style.def && args.Length==1)
+            //{
+            //    Console.WriteLine($"{args[0]} is {rawData}");
+            //}
+            else 
             {
                 Console.WriteLine($"{args[0]} is {rawData}");
             }
@@ -197,7 +208,6 @@ public class location
         }
         catch (Exception e)
         {
-            Console.WriteLine("Connection error");
             Console.WriteLine(e);
         }
     }
