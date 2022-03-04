@@ -112,13 +112,13 @@ public class location
             }
 
             bool html = false;
-            string rawData = "";
+            string rawData = null;
             try
             {
                 int num;
                 while ((num = sr.Read()) > 0)
                 {
-                    rawData += ((char)num);
+                    rawData += (char)num;
                 }
             }
             catch
@@ -213,7 +213,7 @@ public class location
             {
                 Console.WriteLine($"{args[0]} location changed to be {location}");
             }
-            else //GET
+            else if(rawData != null)//GET
             {
                 Console.WriteLine($"{args[0]} is {rawData}");
             }
@@ -221,7 +221,7 @@ public class location
         }
         catch (Exception e)
         {
-            Console.WriteLine("Something went wrong with the connection:");
+            Console.WriteLine("Something went wrong:");
             Console.WriteLine(e);
         }
     }
