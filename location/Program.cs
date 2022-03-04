@@ -23,22 +23,24 @@ public class location
         {
             args = GetStyle(args, out selectedStyle);
             args = GetAddress(args, out address);
-            args = GetPort(args, out port); // if user enter string throw error
+            args = GetTime(args, out int timeOut);
+            args = GetPort(args, out port); // if user enter string throws error
 
             TcpClient client = new TcpClient();
             client.Connect(address, port);
-            //client.ReceiveTimeout = 1000;
-            //client.SendTimeout = 1000;
+            client.ReceiveTimeout = timeOut;
+            client.SendTimeout = timeOut;
             StreamWriter sw = new StreamWriter(client.GetStream());
             StreamReader sr = new StreamReader(client.GetStream());
 
-
+            //Checks if the user entered anything.
             if (args.Length == 0)
             {
                 Console.WriteLine("ERROR: no arguments supplied");
             }
             else
             {
+                //Concatenate the location if args contains it
                 if (args.Length > 1)
                 {
                     location = args[1];
@@ -51,48 +53,48 @@ public class location
                 //-h1 means HTTP/1.1, -h0 means HTTP/1.0 and -h9 means HTTP/0.9 styles
                 switch (selectedStyle)
                 {
+                    //h0 HTTP/1.0
                     case Style.h0:
-                        if (args.Length == 1)
+                        if (args.Length == 1) //GET
                         {
                             request = ($"GET /?{args[0]} HTTP/1.0\r\n\r\n");
                         }
-                        else if (args.Length > 1)
+                        else if (args.Length > 1) //POST
                         {
                             int locationLength = location.Length;
                             request = ($"POST /{args[0]} HTTP/1.0\r\nContent-Length: {locationLength}\r\n\r\n{location}");
                         }
                         break;
-
+                    //h1 HTTP/1.1
                     case Style.h1:
-                        if (args.Length == 1)
+                        if (args.Length == 1) //GET
                         {
-                            //sw.WriteLine($"GET /?name={args[0]} HTTP/1.1\r\nHost: {address}");
                             request = ($"GET /?name={args[0]} HTTP/1.1\r\nHost: {address}\r\n\r\n");
                         }
-                        else if (args.Length > 1)
+                        else if (args.Length > 1) //POST
                         {
                             string locationAndName = $"name={args[0]}&location={location}";
                             request = ($"POST / HTTP/1.1\r\nHost: {address}\r\nContent-Length: {locationAndName.Length}\r\n\r\n{locationAndName}");
                         }
                         break;
-
+                    //h9 HTTP*0.9
                     case Style.h9:
                         if (args.Length == 1)
                         {
-                            request = ($"GET /{args[0]}\r\n");
+                            request = ($"GET /{args[0]}\r\n"); //GET
                         }
-                        else if (args.Length > 1)
+                        else if (args.Length > 1) //PUT
                         {
                             request = ($"PUT /{args[0]}\r\n\r\n{location}\r\n");
                         }
                         break;
-
+                    //whois
                     case Style.def:
-                        if (args.Length == 1)
+                        if (args.Length == 1) //GET
                         {
                             request = (args[0]+"\r\n");
                         }
-                        else if (args.Length > 1)
+                        else if (args.Length > 1) //SET
                         {
                             request = (args[0] + " " + location+"\r\n");
                         }
@@ -103,6 +105,7 @@ public class location
                 sw.Flush();
             }
 
+            //Removes special characters
             if (args.Length>1)
             {
                 location = location.Trim(new Char[] { '\"', '\'', '`', '\\', '.' });
@@ -110,7 +113,6 @@ public class location
 
             bool html = false;
             string rawData = "";
-
             try
             {
                 int num;
@@ -130,45 +132,52 @@ public class location
             }
 
 
-            if (rawData== "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n\r\n")
+            string[] errorMessages =
+            {
+                "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n\r\n",
+                "HTTP/1.0 404 Not Found\r\nContent-Type: text/plain\r\n\r\n\r\n",
+                "HTTP/0.9 404 Not Found\r\nContent-Type: text/plain\r\n\r\n\r\n",
+                "ERROR: no entries found\r\n"
+            };
+
+
+            //Not Found, all protocols
+            if (errorMessages.Contains(rawData))
             {
                 Console.WriteLine(rawData);
             }
-            else if (rawData=="HTTP/1.0 404 Not Found\r\nContent-Type: text/plain\r\n\r\n\r\n")
-            {
-                Console.WriteLine(rawData);
-            }
-            else if (rawData == "ERROR: no entries found\r\n")
-            {
-                Console.WriteLine(rawData);
-            }
-            else if (rawData == "HTTP/0.9 404 Not Found\r\nContent-Type: text/plain\r\n\r\n\r\n")
-            {
-                Console.WriteLine(rawData);
-            }
+            //h9 HTTP/0.9
             else if (rawData.Contains("HTTP/0.9 200 OK\r\nContent-Type: text/plain\r\n\r\n") && args.Length > 1 && selectedStyle == Style.h9)
             {
-                Console.WriteLine($"{args[0]} location changed to be {args[1]}");
-            }
-            else if (rawData.Contains("HTTP/0.9 200 OK\r\nContent-Type: text/plain") && args.Length == 1 && selectedStyle == Style.h9)
-            {
-                string[] line = rawData.Trim().Split();
-                location = line[9];
-                for (int i = 10; i < line.Length; i++)
+                //GET
+                if (args.Length == 1)
                 {
-                    location += " " + line[i];
+                    string[] line = rawData.Trim().Split();
+                    location = line[9];
+                    for (int i = 10; i < line.Length; i++)
+                    {
+                        location += " " + line[i];
+                    }
+                    Console.WriteLine($"{args[0]} is {location}");
                 }
-                Console.WriteLine($"{args[0]} is {location}");
+                //PUT
+                else 
+                {
+                    Console.WriteLine($"{args[0]} location changed to be {args[1]}");
+                }
             }
+            //h1 HTTP/1.1
             else if (rawData.Contains("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n") && selectedStyle == Style.h1)
             {
+                //POST
                 if (request.Contains("name=") && request.Contains("&location="))
                 {
                     Console.WriteLine($"{args[0]} location changed to be {location}");
                 }
-                else //GET
+                //GET
+                else
                 {
-                    if (!html) 
+                    if (!html)
                     {
                         string[] line = rawData.Trim().Split();
                         int indexOfSpace = Array.IndexOf(line, "");
@@ -178,29 +187,32 @@ public class location
                         {
                             location += " " + line[i];
                         }
-                        rawData = location; 
+                        rawData = location;
                     }
                     Console.WriteLine($"{args[0]} is {rawData}");
                 }
             }
+            //h0 HTTP/1.0
             else if (rawData.Contains("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n") && args.Length > 1 && selectedStyle == Style.h0)
             {
+                //GET
+                if (args.Length == 1)
+                {
+                    string[] data = rawData.Split("\r\n");
+                    Console.WriteLine($"{args[0]} is {data[data.Length - 3]}");
+                }
+                //POST
+                else 
+                {
+                    Console.WriteLine($"{args[0]} location changed to be {location}");
+                }
+            }
+            //whois
+            else if (rawData == "OK\r\n" && args.Length > 1 && selectedStyle == Style.def) //SET
+            {
                 Console.WriteLine($"{args[0]} location changed to be {location}");
             }
-            else if (rawData.Contains("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n") && args.Length == 1 && selectedStyle == Style.h0)
-            {
-                string[] data = rawData.Split("\r\n");
-                Console.WriteLine($"{args[0]} is {data[data.Length - 3]}");
-            }
-            else if (rawData == "OK\r\n" && args.Length > 1 && selectedStyle == Style.def)
-            {
-                Console.WriteLine($"{args[0]} location changed to be {location}");
-            }
-            //else if (selectedStyle == Style.def && args.Length==1)
-            //{
-            //    Console.WriteLine($"{args[0]} is {rawData}");
-            //}
-            else 
+            else //GET
             {
                 Console.WriteLine($"{args[0]} is {rawData}");
             }
@@ -208,13 +220,22 @@ public class location
         }
         catch (Exception e)
         {
+            Console.WriteLine("Something went wrong with the connection:");
             Console.WriteLine(e);
         }
     }
 
-
+    /// <summary>
+    /// Sets the address.
+    /// Default address is "whois.net.dcs.hull.ac.uk".
+    /// If the array contains "-h" then changes the port then removes it from the array.
+    /// </summary>
+    /// <param name="args"></param>
+    /// <param name="address"></param>
+    /// <returns>An array without the address</returns>
     static string[] GetAddress(string[] args, out string address)
     {
+        //default address
         address = "whois.net.dcs.hull.ac.uk";
 
         int addressLocation = Array.IndexOf(args, "-h");
@@ -226,10 +247,19 @@ public class location
         }
         return args;
     }
+
+    /// <summary>
+    /// Sets the port, the port by default is 43.
+    /// If array contains "-p", then gets the port from an array, 
+    /// then removes the protocol flag and the protocol.
+    /// </summary>
+    /// <param name="args">Command line argument</param>
+    /// <param name="port">port number, throws error if string</param>
+    /// <returns>The command line arg without the protocol and it's flag</returns>
     static string[] GetPort(string[] args, out int port)
     {
-
-        port = 43;
+        //default port
+        port = 43; 
 
         int portLocation = Array.IndexOf(args, "-p");
         if (portLocation > -1)
@@ -242,12 +272,18 @@ public class location
             }
             else
             {
-                throw new ArgumentException("Incorrect port");
+                throw new ArgumentException($"Incorrect port: -p {args[portLocation + 1]}");
             }
         }
         return args;
     }
 
+    /// <summary>
+    /// Get the protocol from an array, then removes the protocol flag
+    /// </summary>
+    /// <param name="args"></param>
+    /// <param name="selectedStyle"></param>
+    /// <returns>Returns the array without the protocol flag</returns>
     static string[] GetStyle(string[] args, out Style selectedStyle)
     {
         selectedStyle = Style.def;
@@ -271,6 +307,26 @@ public class location
             selectedStyle = Style.h9;
         }
 
+        return args;
+    }
+    /// <summary>
+    /// Sets the timout time.
+    /// Default timeout is 1000 (1 sec).
+    /// If the array contains "-t" then sets it to 0.
+    /// </summary>
+    /// <param name="args">Command line arguments</param>
+    /// <param name="timeOut">time-out in millisec</param>
+    /// <returns>The command line argument wihtout the "-t"</returns>
+    private static string[] GetTime(string[] args, out int timeOut)
+    {
+        timeOut = 1000;
+
+        if (args.Contains("-t"))
+        {
+            int position = Array.IndexOf(args, "-t");
+            args = args.Where((array, i) => i != position).ToArray();
+            timeOut = 0;
+        }
         return args;
     }
 
