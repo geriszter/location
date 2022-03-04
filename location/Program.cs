@@ -198,8 +198,9 @@ public class location
                 //GET
                 if (args.Length == 1)
                 {
-                    string[] data = rawData.Split("\r\n");
-                    Console.WriteLine($"{args[0]} is {data[data.Length - 3]}");
+                    location = rawData.Remove(0, 45);
+                    location = location.Remove(location.Length-2);
+                    Console.WriteLine($"{args[0]} is {location}");
                 }
                 //POST
                 else 
