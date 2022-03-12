@@ -103,6 +103,7 @@ public class location
 
                 sw.Write(request);
                 sw.Flush();
+
             }
 
             //Removes special characters
@@ -112,7 +113,10 @@ public class location
             }
 
             bool html = false;
-            string rawData = null;
+            string rawData = "";
+            //client.ReceiveTimeout = timeOut;
+            //client.SendTimeout = timeOut;
+            System.Threading.Thread.Sleep(500);
             try
             {
                 int num;
@@ -130,6 +134,7 @@ public class location
                     html = true;
                 }
             }
+            sr.Close();
 
 
             string[] errorMessages =
@@ -161,7 +166,7 @@ public class location
                     Console.WriteLine($"{args[0]} is {location}");
                 }
                 //PUT
-                else 
+                else
                 {
                     Console.WriteLine($"{args[0]} location changed to be {args[1]}");
                 }
@@ -199,11 +204,11 @@ public class location
                 if (args.Length == 1)
                 {
                     location = rawData.Remove(0, 45);
-                    location = location.Remove(location.Length-2);
+                    location = location.Remove(location.Length - 2);
                     Console.WriteLine($"{args[0]} is {location}");
                 }
                 //POST
-                else 
+                else
                 {
                     Console.WriteLine($"{args[0]} location changed to be {location}");
                 }
@@ -213,9 +218,13 @@ public class location
             {
                 Console.WriteLine($"{args[0]} location changed to be {location}");
             }
-            else if(rawData != null)//GET
+            else if (rawData != "")//GET
             {
                 Console.WriteLine($"{args[0]} is {rawData}");
+            }
+            else 
+            {
+                Console.WriteLine($"No response from the server");
             }
 
         }
