@@ -9,7 +9,7 @@ public class location
         h0,
         h1,
         h9,
-        def
+        whois
     }
     static void Main(string[] args)
     {
@@ -89,7 +89,7 @@ public class location
                         }
                         break;
                     //whois
-                    case Style.def:
+                    case Style.whois:
                         if (args.Length == 1) //GET
                         {
                             request = (args[0]+"\r\n");
@@ -114,8 +114,6 @@ public class location
 
             bool html = false;
             string rawData = "";
-            //client.ReceiveTimeout = timeOut;
-            //client.SendTimeout = timeOut;
             System.Threading.Thread.Sleep(500);
             try
             {
@@ -214,7 +212,7 @@ public class location
                 }
             }
             //whois
-            else if (rawData == "OK\r\n" && args.Length > 1 && selectedStyle == Style.def) //SET
+            else if (rawData == "OK\r\n" && args.Length > 1 && selectedStyle == Style.whois) //SET
             {
                 Console.WriteLine($"{args[0]} location changed to be {location}");
             }
@@ -296,7 +294,7 @@ public class location
     /// <returns>Returns the array without the protocol flag</returns>
     static string[] GetStyle(string[] args, out Style selectedStyle)
     {
-        selectedStyle = Style.def;
+        selectedStyle = Style.whois;
 
         if (Array.Exists(args, flag => flag == "-h0"))
         {

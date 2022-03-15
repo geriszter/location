@@ -2,7 +2,7 @@
   "profiles": {
     "location": {
       "commandName": "Project",
-      "commandLineArgs": "-h9 606497 -h localhost -t"
+      "commandLineArgs": "606497 is being tested -h localhost"
     }
   }
 }
